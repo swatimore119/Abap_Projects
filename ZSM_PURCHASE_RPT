@@ -1,0 +1,163 @@
+*&---------------------------------------------------------------------*
+*& Report ZSM_PURCHASE_RPT
+*&---------------------------------------------------------------------*
+*&
+*&---------------------------------------------------------------------*
+REPORT zsm_purchase_rpt.
+TYPE-POOLS: slis.
+
+TABLES: ekko,ekpo,marc, mara, makt, mard, t001w, t001l.
+
+
+TYPES: BEGIN OF ty_outab,
+         selkz,
+         ebeln TYPE ekko-ebeln,
+         bukrs TYPE ekko-bukrs,
+         aedat TYPE ekko-aedat,
+         lifnr TYPE ekko-lifnr,
+         ebelp TYPE ekpo-ebelp,
+         matnr TYPE mara-matnr,
+         menge TYPE ekpo-menge,
+         meins TYPE ekpo-meins,
+         netpr TYPE ekpo-netpr,
+         spras TYPE makt-spras,
+         maktx TYPE makt-maktx,
+         mtart TYPE mara-mtart,
+         matkl TYPE mara-matkl,
+         werks TYPE marc-werks,
+         name1 TYPE t001w-name1,
+         lgort TYPE mard-lgort,
+         lgobe TYPE t001l-lgobe,
+       END OF ty_outab.
+
+DATA: wa_outab TYPE ty_outab,
+      lt_outab TYPE STANDARD TABLE OF ty_outab.
+
+
+SELECTION-SCREEN:  BEGIN OF BLOCK b1 WITH FRAME TITLE  TEXT-001.
+  SELECT-OPTIONS: s_ekko FOR ekko-ebeln.
+SELECTION-SCREEN: END OF BLOCK b1.
+
+
+START-OF-SELECTION.
+
+*"  Fetch output -----------------------------------
+  SELECT ebeln, bukrs, aedat, lifnr
+    FROM ekko INTO TABLE @DATA(lt_ekko)
+    WHERE ekko~ebeln IN @s_ekko.
+
+  IF sy-subrc = 0.
+
+    IF NOT lt_ekko[] IS INITIAL.
+
+      SELECT ebeln, ebelp, matnr, menge, meins, netpr
+        FROM ekpo INTO TABLE @DATA(lt_ekpo)
+        FOR ALL ENTRIES IN @lt_ekko
+        WHERE ebeln =  @lt_ekko-ebeln.
+
+      IF NOT lt_ekpo[] IS INITIAL.
+
+        SELECT matnr, spras, maktx
+          FROM makt INTO TABLE @DATA(lt_makt)
+          FOR ALL ENTRIES IN @lt_ekpo
+          WHERE matnr = @lt_ekpo-matnr.
+
+        SELECT matnr, mtart, matkl, meins
+          FROM mara INTO TABLE @DATA(lt_mara)
+          FOR ALL ENTRIES IN @lt_ekpo
+          WHERE matnr =  @lt_ekpo-matnr.
+
+        SELECT matnr, werks
+          FROM marc INTO TABLE @DATA(lt_marc)
+            FOR ALL ENTRIES IN @lt_ekpo
+          WHERE matnr =  @lt_ekpo-matnr.
+        IF NOT lt_marc[] IS INITIAL.
+          SELECT werks, name1
+            FROM t001w INTO TABLE @DATA(lt_t001w)
+            FOR ALL ENTRIES IN @lt_marc
+            WHERE werks = @lt_marc-werks.
+        ENDIF. "IF not lt_marc[] is INITIAL.
+
+        SELECT matnr, werks, lgort
+          FROM mard INTO TABLE @DATA(lt_mard)
+            FOR ALL ENTRIES IN @lt_ekpo
+          WHERE matnr =  @lt_ekpo-matnr.
+        IF NOT lt_mard[] IS INITIAL.
+          SELECT werks, lgort, lgobe
+            FROM t001l INTO TABLE @DATA(lt_t001l)
+            FOR ALL ENTRIES IN @lt_mard
+            WHERE werks = @lt_mard-werks
+            AND lgort =  @lt_mard-lgort.
+        ENDIF. "IF NOT lt_mard[] IS INITIAL.
+
+      ELSE.
+        MESSAGE 'Error in ekpo!' TYPE 'S'.
+
+      ENDIF. "IF NOT lt_ekpo[] IS INITIAL.
+
+
+    ELSE.
+      MESSAGE 'Error in ekko!' TYPE 'S'.
+    ENDIF. "IF NOT lt_ekko[] IS INITIAL.
+
+  ENDIF.
+
+  " Process Output ------------------------------
+
+  LOOP AT lt_ekko INTO DATA(wa_ekko).
+    wa_outab-ebeln = wa_ekko-ebeln.
+    wa_outab-bukrs = wa_ekko-bukrs.
+    wa_outab-aedat = wa_ekko-aedat.
+    wa_outab-ebeln = wa_ekko-ebeln.
+
+
+*   READ TABLE lt_ekpo INTO DATA(wa_ekpo) with KEY ebeln = wa_ekko-ebeln BINARY SEARCH.
+*   IF sy-subrc = 0.
+*      wa_outab-ebelp = wa_ekpo-ebelp.
+*      wa_outab-matnr = wa_ekpo-matnr.
+*      wa_outab-menge = wa_ekpo-menge.
+*      wa_outab-meins = wa_ekpo-meins.
+*      wa_outab-netpr = wa_ekpo-netpr.
+*
+*   ENDIF.
+
+    LOOP AT lt_ekpo INTO DATA(wa_ekpo) WHERE ebeln = wa_ekko-ebeln.
+      wa_outab-ebelp = wa_ekpo-ebelp.
+      wa_outab-matnr = wa_ekpo-matnr.
+      wa_outab-menge = wa_ekpo-menge.
+      wa_outab-meins = wa_ekpo-meins.
+      wa_outab-netpr = wa_ekpo-netpr.
+
+    READ TABLE lt_mara INTO DATA(wa_mara) with KEY matnr = wa_ekpo-matnr BINARY SEARCH.
+    IF sy-subrc = 0.
+
+      wa_outab-mtart = wa_mara-mtart.
+      wa_outab-matkl = wa_mara-matkl.
+      wa_outab-meins = wa_mara-meins.
+
+    ENDIF.
+
+      APPEND wa_outab TO lt_outab.
+
+    ENDLOOP.
+ CLEAR: wa_outab, wa_ekko, wa_ekpo, wa_mara.
+
+  ENDLOOP.
+
+
+
+
+  " Display Output --------------------------
+  DATA: lo_gr_alv       TYPE REF TO cl_salv_table.
+
+  "* Create the ALV object
+  TRY.
+      CALL METHOD cl_salv_table=>factory
+        IMPORTING
+          r_salv_table = lo_gr_alv
+        CHANGING
+          t_table      = lt_outab.
+    CATCH cx_salv_msg.
+  ENDTRY.
+
+  lo_gr_alv->display( ).
