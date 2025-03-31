@@ -1,0 +1,375 @@
+*&---------------------------------------------------------------------*
+*& Report ZSM_INTERACTIVE_REPORT
+*&---------------------------------------------------------------------*
+*&
+*&---------------------------------------------------------------------*
+REPORT zsm_interactive_report.
+
+TABLES: vbrk, vbrp.
+
+TYPES: BEGIN OF ts_vbrk,
+         vbeln TYPE vbrk-vbeln,
+         fkart TYPE vbrk-fkart,
+         fktyp TYPE vbrk-fktyp,
+         vbtyp TYPE vbrk-vbtyp,
+         waerk TYPE vbrk-waerk,
+         vkorg TYPE vbrk-vkorg,
+         vtweg TYPE vbrk-vtweg,
+         kalsm TYPE vbrk-kalsm,
+         knumv TYPE vbrk-knumv,
+         vsbed TYPE vbrk-vsbed,
+         fkdat TYPE vbrk-fkdat,
+         belnr TYPE vbrk-belnr,
+       END OF ts_vbrk.
+
+TYPES: BEGIN OF ts_vbrp,
+         vbeln TYPE vbrp-vbeln,
+         posnr TYPE vbrp-posnr,
+         meins TYPE vbrp-meins,
+         netwr TYPE vbrp-netwr,
+         matnr TYPE vbrp-matnr,
+         matkl TYPE vbrp-matkl,
+       END OF ts_vbrp.
+
+DATA: it_vbrk TYPE TABLE OF ts_vbrk,
+      it_vbrp TYPE TABLE OF ts_vbrp,
+      it_list TYPE slis_t_listheader,
+      wa_list LIKE LINE OF it_list.
+
+DATA: it_fieldcat TYPE slis_t_fieldcat_alv,
+      wa_fieldcat TYPE slis_fieldcat_alv.
+
+SELECT-OPTIONS: s_vbeln FOR vbrk-vbeln.
+
+START-OF-SELECTION.
+
+  PERFORM fetch_data USING s_vbeln[] CHANGING it_vbrk.
+  PERFORM display TABLES it_vbrk.
+
+*&---------------------------------------------------------------------*
+*&      Form  FETCH_DATA
+*&---------------------------------------------------------------------*
+FORM fetch_data USING p_s_vbeln LIKE s_vbeln[]
+                 CHANGING p_it_vbrk LIKE it_vbrk.
+
+  SELECT vbeln
+         fkart
+         fktyp
+         vbtyp
+         waerk
+         vkorg
+         vtweg
+         kalsm
+         knumv
+         vsbed
+         fkdat
+         belnr
+         FROM vbrk INTO TABLE p_it_vbrk
+         WHERE vbeln IN p_s_vbeln.
+
+ENDFORM.                    " FETCH_DATA
+
+*&---------------------------------------------------------------------*
+*&      Form  DISPLAY
+*&---------------------------------------------------------------------*
+FORM display TABLES p_it_vbrk LIKE it_vbrk.
+
+  " Add field catalog creation
+  PERFORM create_fieldcat USING 'TS_VBRK'.
+
+  CALL FUNCTION 'REUSE_ALV_GRID_DISPLAY'
+    EXPORTING
+      i_callback_program       = sy-repid
+      i_callback_pf_status_set = 'PF_STATUS'
+      i_callback_user_command  = 'USER_COMMAND'
+      i_callback_top_of_page   = 'TOP_PAGE'
+      i_structure_name         = 'TS_VBRK'
+      it_fieldcat              = it_fieldcat  " Pass the field catalog here
+    TABLES
+      t_outtab                 = p_it_vbrk
+    EXCEPTIONS
+      program_error            = 1
+      OTHERS                   = 2.
+
+  IF sy-subrc <> 0.
+    " Implement suitable error handling here
+  ENDIF.
+
+ENDFORM.                    " DISPLAY
+
+*&---------------------------------------------------------------------*
+*&      Form  CREATE_FIELDCAT
+*&---------------------------------------------------------------------*
+FORM create_fieldcat USING iv_structure TYPE string.
+
+  CLEAR wa_fieldcat.
+  wa_fieldcat-fieldname = 'VBELN'.
+  wa_fieldcat-seltext_l = 'Sales Order'.
+  wa_fieldcat-outputlen  = 10.
+  wa_fieldcat-col_pos  = 1.
+  APPEND wa_fieldcat TO it_fieldcat.
+
+  CLEAR wa_fieldcat.
+  wa_fieldcat-fieldname = 'FKART'.
+  wa_fieldcat-seltext_l = 'Billing Type'.
+  wa_fieldcat-outputlen  = 8.
+  wa_fieldcat-col_pos  = 2.
+  APPEND wa_fieldcat TO it_fieldcat.
+
+  CLEAR wa_fieldcat.
+  wa_fieldcat-fieldname = 'FKTYP'.
+  wa_fieldcat-seltext_l = 'Billing Type Group'.
+  wa_fieldcat-outputlen  = 8.
+  wa_fieldcat-col_pos  = 3.
+  APPEND wa_fieldcat TO it_fieldcat.
+
+  CLEAR wa_fieldcat.
+  wa_fieldcat-fieldname = 'VBTYP'.
+  wa_fieldcat-seltext_l = 'Sales Document Type'.
+  wa_fieldcat-outputlen  = 8.
+  wa_fieldcat-col_pos  = 4.
+  APPEND wa_fieldcat TO it_fieldcat.
+
+  CLEAR wa_fieldcat.
+  wa_fieldcat-fieldname = 'WAERK'.
+  wa_fieldcat-seltext_l = 'Currency'.
+  wa_fieldcat-outputlen  = 5.
+  wa_fieldcat-col_pos  = 5.
+  APPEND wa_fieldcat TO it_fieldcat.
+
+  CLEAR wa_fieldcat.
+  wa_fieldcat-fieldname = 'VKORG'.
+  wa_fieldcat-seltext_l = 'Sales Organization'.
+  wa_fieldcat-outputlen  = 5.
+  wa_fieldcat-col_pos  = 6.
+  APPEND wa_fieldcat TO it_fieldcat.
+
+  CLEAR wa_fieldcat.
+  wa_fieldcat-fieldname = 'VTWEG'.
+  wa_fieldcat-seltext_l = 'Distribution Channel'.
+  wa_fieldcat-outputlen  = 8.
+  wa_fieldcat-col_pos  = 7.
+  APPEND wa_fieldcat TO it_fieldcat.
+
+  CLEAR wa_fieldcat.
+  wa_fieldcat-fieldname = 'KALSM'.
+  wa_fieldcat-seltext_l = 'Sales Group'.
+  wa_fieldcat-outputlen  = 8.
+  wa_fieldcat-col_pos  = 8.
+  APPEND wa_fieldcat TO it_fieldcat.
+
+  CLEAR wa_fieldcat.
+  wa_fieldcat-fieldname = 'KNUMV'.
+  wa_fieldcat-seltext_l = 'Condition Number'.
+  wa_fieldcat-outputlen  = 10.
+  wa_fieldcat-col_pos  = 9.
+  APPEND wa_fieldcat TO it_fieldcat.
+
+  CLEAR wa_fieldcat.
+  wa_fieldcat-fieldname = 'VSBED'.
+  wa_fieldcat-seltext_l = 'Shipping Conditions'.
+  wa_fieldcat-outputlen  = 6.
+  wa_fieldcat-col_pos  = 10.
+  APPEND wa_fieldcat TO it_fieldcat.
+
+  CLEAR wa_fieldcat.
+  wa_fieldcat-fieldname = 'FKDAT'.
+  wa_fieldcat-seltext_l = 'Billing Date'.
+  wa_fieldcat-outputlen  = 10.
+  wa_fieldcat-col_pos  = 11.
+  APPEND wa_fieldcat TO it_fieldcat.
+
+  CLEAR wa_fieldcat.
+  wa_fieldcat-fieldname = 'BELNR'.
+  wa_fieldcat-seltext_l = 'Document Number'.
+  wa_fieldcat-outputlen  = 10.
+  wa_fieldcat-col_pos  = 12.
+  APPEND wa_fieldcat TO it_fieldcat.
+
+  CLEAR wa_fieldcat.
+
+ENDFORM.                    " CREATE_FIELDCAT
+
+*&---------------------------------------------------------------------*
+*&      Form  PF_STATUS
+*&---------------------------------------------------------------------*
+FORM pf_status USING rt_extab TYPE slis_t_extab.
+  SET PF-STATUS 'ZMYSCREEN'. " Ensure this status is created and assigned to the ALV output
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*&      Form  USER_COMMAND
+*&---------------------------------------------------------------------*
+FORM user_command USING sy_ucomm
+                        rs_selfield TYPE slis_selfield.
+
+  CASE sy_ucomm.
+
+WHEN '&EML'.
+
+  DATA: lt_recipients TYPE TABLE OF somlreci1,    " Recipient list table
+        lt_attach     TYPE TABLE OF solisti1,      " Attachment content
+        lv_subject    TYPE c LENGTH 255,     " Subject with proper length
+        lv_body       TYPE string,               " Email body
+        lv_sender     TYPE string,               " Sender's email address
+        lv_text       TYPE string.
+
+  " Proper initialization
+  lv_subject = 'Sales Order Report'.
+  lv_body = 'Please find the attached sales order report.'.
+  lv_sender = 'sender@example.com'.  " Replace with a valid email address
+
+  " Recipient setup
+  CLEAR lt_recipients.
+  APPEND VALUE #( receiver = 'recipient@example.com' ) TO lt_recipients.  " Correct field name
+
+  " Generate CSV content
+  LOOP AT it_vbrk INTO DATA(wa_outab).
+    CONCATENATE wa_outab-vbeln
+                wa_outab-fkart
+                wa_outab-fktyp
+                wa_outab-vbtyp
+                wa_outab-waerk
+                wa_outab-vkorg
+                wa_outab-vtweg
+                wa_outab-kalsm
+                wa_outab-knumv
+                wa_outab-vsbed
+                wa_outab-fkdat
+                wa_outab-belnr
+                INTO lv_text SEPARATED BY ','.
+    APPEND VALUE #( line = lv_text ) TO lt_attach.
+  ENDLOOP.
+
+  " Call Function Module
+  CALL FUNCTION 'SO_DOCUMENT_SEND_API1'
+    EXPORTING
+      document_data              = lv_subject
+      document_type              = 'RAW'
+      recipient_list             = lt_recipients
+      sender_address             = lv_sender
+      subject                    = lv_subject
+      text_data                  = lv_body
+    TABLES
+      object_header              = lt_attach
+    EXCEPTIONS
+      program_error              = 1
+      OTHERS                     = 2.
+
+  IF sy-subrc = 0.
+    MESSAGE 'Email sent successfully' TYPE 'S'.
+  ELSE.
+    MESSAGE 'Failed to send email' TYPE 'E'.
+  ENDIF.
+
+
+
+    WHEN '&IC1'.
+      DATA: num(10) TYPE n.
+      num = rs_selfield-value.
+
+      SELECT vbeln
+             posnr
+             meins
+             netwr
+             matnr
+             matkl
+             FROM vbrp INTO TABLE it_vbrp
+             WHERE vbeln = num.
+
+      CLEAR it_fieldcat. " # Clear the field catalog before reusing
+      PERFORM create_fieldcat1 USING 'TS_VBRP'. " Add field catalog for VBRP
+
+      CALL FUNCTION 'REUSE_ALV_GRID_DISPLAY'
+        EXPORTING
+          i_callback_program = sy-repid
+          i_structure_name   = 'TS_VBRP'
+          it_fieldcat        = it_fieldcat
+        TABLES
+          t_outtab           = it_vbrp
+        EXCEPTIONS
+          program_error      = 1
+          OTHERS             = 2.
+
+      IF sy-subrc <> 0.
+        " Implement suitable error handling here
+      ENDIF.
+  ENDCASE.
+
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*&      Form  TOP_PAGE
+*&---------------------------------------------------------------------*
+FORM top_page.
+
+  wa_list-typ = 'H'.
+  wa_list-info = 'SALES ORDER REPORT'.
+  APPEND wa_list TO it_list.
+  CLEAR wa_list.
+
+  wa_list-typ = 'S'.
+  CONCATENATE sy-datum+6(2) ':' sy-datum+4(2) ':' sy-datum(4)
+  INTO wa_list-info.
+  APPEND wa_list TO it_list.
+  CLEAR wa_list.
+
+  CALL FUNCTION 'REUSE_ALV_COMMENTARY_WRITE'
+    EXPORTING
+      it_list_commentary = it_list
+      i_logo             = 'MYLOGO'.
+
+  CLEAR it_list.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form create_fieldcat1
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> P_
+*&---------------------------------------------------------------------*
+FORM create_fieldcat1  USING iv_structure TYPE string.
+
+  CLEAR wa_fieldcat.
+  wa_fieldcat-fieldname = 'VBELN'.
+  wa_fieldcat-seltext_l = 'Sales Document'.
+  wa_fieldcat-outputlen  = 20.
+*  wa_fieldcat-col_pos  = 12.
+  APPEND wa_fieldcat TO it_fieldcat.
+
+  CLEAR wa_fieldcat.
+  wa_fieldcat-fieldname = 'POSNR'.
+  wa_fieldcat-seltext_l = 'Billing Item'.
+  wa_fieldcat-outputlen  = 15.
+*  wa_fieldcat-col_pos  = 12.
+  APPEND wa_fieldcat TO it_fieldcat.
+
+  CLEAR wa_fieldcat.
+  wa_fieldcat-fieldname = 'MEINS'.
+  wa_fieldcat-seltext_l = 'Base Unit of Measure'.
+  wa_fieldcat-outputlen  = 15.
+*  wa_fieldcat-col_pos  = 12.
+  APPEND wa_fieldcat TO it_fieldcat.
+
+  CLEAR wa_fieldcat.
+  wa_fieldcat-fieldname = 'NETWR'.
+  wa_fieldcat-seltext_l = 'Net Value'.
+  wa_fieldcat-outputlen  = 15.
+*  wa_fieldcat-col_pos  = 12.
+  APPEND wa_fieldcat TO it_fieldcat.
+
+  CLEAR wa_fieldcat.
+  wa_fieldcat-fieldname = 'MATNR'.
+  wa_fieldcat-seltext_l = 'Material No'.
+  wa_fieldcat-outputlen  = 18.
+*  wa_fieldcat-col_pos  = 12.
+  APPEND wa_fieldcat TO it_fieldcat.
+
+  CLEAR wa_fieldcat.
+  wa_fieldcat-fieldname = 'MATKL'.
+  wa_fieldcat-seltext_l = 'Material Group'.
+  wa_fieldcat-outputlen  = 15.
+*  wa_fieldcat-col_pos  = 12.
+  APPEND wa_fieldcat TO it_fieldcat.
+
+ENDFORM.
