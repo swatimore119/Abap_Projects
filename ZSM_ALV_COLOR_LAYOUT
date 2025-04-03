@@ -1,0 +1,213 @@
+*&---------------------------------------------------------------------*
+*& Report ZSM_ALV_COLOR_LAYOUT
+*&---------------------------------------------------------------------*
+*&
+*&---------------------------------------------------------------------*
+REPORT ZSM_ALV_COLOR_LAYOUT.
+
+TYPES : BEGIN OF TY_SO,
+        VBELN TYPE VBAK-VBELN,
+        POSNR TYPE VBAP-POSNR,
+        VKORG TYPE VBAK-VKORG,
+        MATNR TYPE VBAP-MATNR,
+        ARKTX TYPE VBAP-ARKTX,
+        NETWR TYPE VBAP-NETWR,
+        COLOR(4) TYPE C,
+        END OF TY_SO.
+
+DATA : WA_SO TYPE TY_SO,
+       IT_SO TYPE TABLE OF TY_SO,
+       IT_CPY TYPE TABLE OF TY_SO,
+       WA_CPY TYPE TY_SO.
+
+
+DATA : IT_FIELDCAT TYPE  SLIS_T_FIELDCAT_ALV,
+       WA_FIELDCAT TYPE slis_fieldcat_alv.
+
+DATA : WA_VBAP TYPE VBAP.
+
+DATA : IS_LAYOUT TYPE  SLIS_LAYOUT_ALV.
+
+SELECT-OPTIONS : S_VBELN FOR WA_SO-VBELN.
+
+START-OF-SELECTION.
+
+PERFORM FETCH_DATA USING S_VBELN[] CHANGING IT_SO.
+
+LOOP AT IT_SO INTO WA_SO.
+
+  IF WA_SO-NETWR < 8000.
+
+    WA_SO-COLOR = 'C310'. " Yellow
+
+  ELSEIF  WA_SO-NETWR >= 8000 and  WA_SO-NETWR < 17000 .
+
+     WA_SO-COLOR = 'C510'. "green color with no intensification and no inverse display.
+
+  ELSE.
+     WA_SO-COLOR = 'C610'. " red
+
+  ENDIF.
+  MODIFY IT_SO FROM WA_SO INDEX SY-TABIX.
+ENDLOOP.
+
+PERFORM FIELD_CATALOG CHANGING IT_FIELDCAT.
+
+PERFORM DISPLAY USING IT_FIELDCAT IT_SO.
+
+
+
+
+
+*&---------------------------------------------------------------------*
+*&      Form  FETCH_DATA
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_S_VBELN[]  text
+*      <--P_IT_SO  text
+*----------------------------------------------------------------------*
+form FETCH_DATA  using    p_s_vbeln LIKE S_VBELN[]
+                 changing p_it_so LIKE IT_SO.
+
+  SELECT A~VBELN POSNR VKORG MATNR ARKTX B~NETWR INTO TABLE
+    p_it_so  FROM VBAK
+    AS A INNER JOIN VBAP AS B ON B~VBELN = A~VBELN
+    WHERE A~VBELN IN  p_s_vbeln.
+
+
+
+endform.                    " FETCH_DATA
+*&---------------------------------------------------------------------*
+*&      Form  FIELD_CATALOG
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      <--P_IT_FIELDCAT  text
+*----------------------------------------------------------------------*
+form FIELD_CATALOG  changing p_it_fieldcat  LIKE it_fieldcat .
+
+WA_FIELDCAT-COL_POS = 1.
+WA_FIELDCAT-FIELDNAME = 'VBELN'.
+WA_FIELDCAT-OUTPUTLEN = 10.
+WA_FIELDCAT-SELTEXT_M = 'BILLING DOC'.
+WA_FIELDCAT-KEY = 'X'.
+
+APPEND WA_FIELDCAT TO P_IT_FIELDCAT.
+CLEAR WA_FIELDCAT.
+
+
+WA_FIELDCAT-COL_POS = 2.
+WA_FIELDCAT-FIELDNAME = 'POSNR'.
+WA_FIELDCAT-OUTPUTLEN = 4.
+WA_FIELDCAT-SELTEXT_M = 'ITEM'.
+WA_FIELDCAT-KEY = 'X'.
+
+APPEND WA_FIELDCAT TO P_IT_FIELDCAT.
+CLEAR WA_FIELDCAT.
+
+
+WA_FIELDCAT-COL_POS = 3.
+WA_FIELDCAT-FIELDNAME = 'VKORG'.
+WA_FIELDCAT-OUTPUTLEN = 4.
+WA_FIELDCAT-SELTEXT_M = 'SALES ORG'.
+
+
+APPEND WA_FIELDCAT TO P_IT_FIELDCAT.
+CLEAR WA_FIELDCAT.
+
+WA_FIELDCAT-COL_POS = 4.
+WA_FIELDCAT-FIELDNAME = 'MATNR'.
+WA_FIELDCAT-OUTPUTLEN = 18.
+WA_FIELDCAT-SELTEXT_M = 'MATERIAL NUMBER'.
+
+
+APPEND WA_FIELDCAT TO P_IT_FIELDCAT.
+CLEAR WA_FIELDCAT.
+
+WA_FIELDCAT-COL_POS = 5.
+WA_FIELDCAT-FIELDNAME = 'ARKTX'.
+WA_FIELDCAT-OUTPUTLEN = 40.
+WA_FIELDCAT-SELTEXT_M = 'SALES MATERIAL DES'.
+APPEND WA_FIELDCAT TO P_IT_FIELDCAT.
+CLEAR WA_FIELDCAT.
+
+WA_FIELDCAT-COL_POS = 6.
+WA_FIELDCAT-FIELDNAME = 'NETWR'.
+WA_FIELDCAT-OUTPUTLEN = 15.
+WA_FIELDCAT-SELTEXT_M = 'NET PRICE'.
+
+
+
+
+
+APPEND WA_FIELDCAT TO P_IT_FIELDCAT.
+CLEAR WA_FIELDCAT.
+endform.                    " FIELD_CATALOG
+*&---------------------------------------------------------------------*
+*&      Form  DISPLAY
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_IT_FIELDCAT  text
+*      -->P_IT_SO  text
+*----------------------------------------------------------------------*
+form DISPLAY  using    p_it_fieldcat LIKE IT_FIELDCAT
+                       p_it_so LIKE IT_SO.
+
+IS_LAYOUT-info_fieldname = 'COLOR'.
+  call function 'REUSE_ALV_GRID_DISPLAY'
+   EXPORTING
+*     I_INTERFACE_CHECK                 = ' '
+*     I_BYPASSING_BUFFER                = ' '
+*     I_BUFFER_ACTIVE                   = ' '
+     I_CALLBACK_PROGRAM                = SY-REPID
+*     I_CALLBACK_PF_STATUS_SET          = ' '
+*     I_CALLBACK_USER_COMMAND           = 'SAVE'
+*     I_CALLBACK_TOP_OF_PAGE            = ' '
+*     I_CALLBACK_HTML_TOP_OF_PAGE       = ' '
+*     I_CALLBACK_HTML_END_OF_LIST       = ' '
+*     I_STRUCTURE_NAME                  =
+*     I_BACKGROUND_ID                   = ' '
+*     I_GRID_TITLE                      =
+*     I_GRID_SETTINGS                   =
+     IS_LAYOUT                         = IS_LAYOUT
+     IT_FIELDCAT                       = p_it_fieldcat
+*     IT_EXCLUDING                      =
+*     IT_SPECIAL_GROUPS                 =
+*     IT_SORT                           =
+*     IT_FILTER                         =
+*     IS_SEL_HIDE                       =
+*     I_DEFAULT                         = 'X'
+*     I_SAVE                            = ' '
+*     IS_VARIANT                        =
+*     IT_EVENTS                         =
+*     IT_EVENT_EXIT                     =
+*     IS_PRINT                          =
+*     IS_REPREP_ID                      =
+*     I_SCREEN_START_COLUMN             = 0
+*     I_SCREEN_START_LINE               = 0
+*     I_SCREEN_END_COLUMN               = 0
+*     I_SCREEN_END_LINE                 = 0
+*     I_HTML_HEIGHT_TOP                 = 0
+*     I_HTML_HEIGHT_END                 = 0
+*     IT_ALV_GRAPHICS                   =
+*     IT_HYPERLINK                      =
+*     IT_ADD_FIELDCAT                   =
+*     IT_EXCEPT_QINFO                   =
+*     IR_SALV_FULLSCREEN_ADAPTER        =
+*   IMPORTING
+*     E_EXIT_CAUSED_BY_CALLER           =
+*     ES_EXIT_CAUSED_BY_USER            =
+    tables
+      t_outtab                          =  p_it_so
+   EXCEPTIONS
+     PROGRAM_ERROR                     = 1
+     OTHERS                            = 2
+            .
+  if sy-subrc <> 0.
+* Implement suitable error handling here
+  endif.
+
+
+endform.                    " DISPLAY

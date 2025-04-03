@@ -1,0 +1,184 @@
+*&---------------------------------------------------------------------*
+*& Report ZSM_FIELDCATALOG_MASK
+*&---------------------------------------------------------------------*
+*&
+*&---------------------------------------------------------------------*
+REPORT ZSM_FIELDCATALOG_MASK.
+
+DATA : BEGIN OF IT OCCURS 0,
+        VBELN LIKE VBAK-VBELN,
+        POSNR LIKE VBAP-POSNR,
+        VKORG LIKE VBAK-VKORG,
+        KUNNR LIKE VBAK-KUNNR,
+        MATNR LIKE VBAP-MATNR,
+        ARKTX LIKE VBAP-ARKTX,
+        NETWR LIKE VBAP-NETWR,
+      END OF IT.
+
+
+DATA : CT_FIELDCAT TYPE  SLIS_T_FIELDCAT_ALV,
+       WA_FIELDCAT LIKE LINE OF CT_FIELDCAT.
+SELECT-OPTIONS : S_VBELN FOR IT-VBELN.
+
+
+START-OF-SELECTION.
+
+PERFORM FETCH_DATA USING S_VBELN[] CHANGING IT[].
+
+PERFORM FIELDCAT CHANGING CT_FIELDCAT.
+
+PERFORM DISPLAY USING CT_FIELDCAT IT[].
+
+
+*&---------------------------------------------------------------------*
+*&      Form  FETCH_DATA
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_S_VBELN[]  text
+*      <--P_IT[]  text
+*----------------------------------------------------------------------*
+form FETCH_DATA  using    p_s_vbeln LIKE s_vbeln[]
+                 changing p_it LIKE  IT[].
+
+  SELECT A~VBELN
+       POSNR
+       VKORG
+       KUNNR
+       MATNR
+       ARKTX
+       B~NETWR INTO TABLE p_it FROM VBAK AS A INNER JOIN VBAP AS B
+  ON A~VBELN = B~VBELN WHERE A~VBELN IN p_s_vbeln.
+
+endform.                    " FETCH_DATA
+*&---------------------------------------------------------------------*
+*&      Form  FIELDCAT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      <--P_CT_FIELDCAT  text
+*----------------------------------------------------------------------*
+form FIELDCAT  changing p_ct_fieldcat.
+
+    call function 'REUSE_ALV_FIELDCATALOG_MERGE'
+  EXPORTING
+     I_PROGRAM_NAME               = SY-REPID
+    I_INTERNAL_TABNAME           = 'IT'
+*     I_STRUCTURE_NAME             = 'IT'
+*     I_CLIENT_NEVER_DISPLAY       = 'X'
+     I_INCLNAME                   = SY-REPID
+*     I_BYPASSING_BUFFER           =
+*     I_BUFFER_ACTIVE              =
+    changing
+      ct_fieldcat                  = p_ct_fieldcat
+   EXCEPTIONS
+     INCONSISTENT_INTERFACE       = 1
+     PROGRAM_ERROR                = 2
+     OTHERS                       = 3
+            .
+  if sy-subrc <> 0.
+* Implement suitable error handling here
+  endif.
+
+
+
+
+
+CLEAR WA_FIELDCAT.
+READ TABLE ct_fieldcat INTO WA_FIELDCAT WITH  KEY FIELDNAME = 'POSNR'.
+IF SY-SUBRC = 0.
+
+  WA_FIELDCAT-KEY = ' '.
+  MODIFY ct_fieldcat FROM WA_FIELDCAT INDEX SY-TABIX.
+
+ENDIF.
+
+
+CLEAR  WA_FIELDCAT.
+READ TABLE CT_FIELDCAT INTO WA_FIELDCAT WITH  KEY  FIELDNAME = 'NETWR'.
+IF SY-SUBRC = 0.
+
+  WA_FIELDCAT-DO_SUM = 'X'.
+  MODIFY ct_fieldcat FROM WA_FIELDCAT INDEX SY-TABIX.
+
+ENDIF.
+
+CLEAR WA_FIELDCAT.
+READ TABLE CT_FIELDCAT INTO WA_FIELDCAT WITH KEY FIELDNAME = 'MATNR'.
+IF SY-SUBRC = 0.
+  WA_FIELDCAT-KEY = 'X'.
+  MODIFY ct_fieldcat FROM WA_FIELDCAT INDEX SY-TABIX.
+  ENDIF.
+
+
+
+endform.                    " FIELDCAT
+*&---------------------------------------------------------------------*
+*&      Form  DISPLAY
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_CT_FIELDCAT  text
+*      -->P_IT[]  text
+*----------------------------------------------------------------------*
+form DISPLAY  using    p_ct_fieldcat LIKE ct_fieldcat
+                       p_it LIKE IT[].
+
+  call function 'REUSE_ALV_GRID_DISPLAY'
+ EXPORTING
+*   I_INTERFACE_CHECK                 = ' '
+*   I_BYPASSING_BUFFER                = ' '
+*   I_BUFFER_ACTIVE                   = ' '
+   I_CALLBACK_PROGRAM                = SY-REPID
+*   I_CALLBACK_PF_STATUS_SET          = ' '
+*   I_CALLBACK_USER_COMMAND           = ' '
+*   I_CALLBACK_TOP_OF_PAGE            = ' '
+*   I_CALLBACK_HTML_TOP_OF_PAGE       = ' '
+*   I_CALLBACK_HTML_END_OF_LIST       = ' '
+*   I_STRUCTURE_NAME                  =
+*   I_BACKGROUND_ID                   = ' '
+*   I_GRID_TITLE                      =
+*   I_GRID_SETTINGS                   =
+*   IS_LAYOUT                         =
+   IT_FIELDCAT                       = P_CT_FIELDCAT
+*   IT_EXCLUDING                      =
+*   IT_SPECIAL_GROUPS                 =
+*   IT_SORT                           =
+*   IT_FILTER                         =
+*   IS_SEL_HIDE                       =
+*   I_DEFAULT                         = 'X'
+*   I_SAVE                            = ' '
+*   IS_VARIANT                        =
+*   IT_EVENTS                         =
+*   IT_EVENT_EXIT                     =
+*   IS_PRINT                          =
+*   IS_REPREP_ID                      =
+*   I_SCREEN_START_COLUMN             = 0
+*   I_SCREEN_START_LINE               = 0
+*   I_SCREEN_END_COLUMN               = 0
+*   I_SCREEN_END_LINE                 = 0
+*   I_HTML_HEIGHT_TOP                 = 0
+*   I_HTML_HEIGHT_END                 = 0
+*   IT_ALV_GRAPHICS                   =
+*   IT_HYPERLINK                      =
+*   IT_ADD_FIELDCAT                   =
+*   IT_EXCEPT_QINFO                   =
+*   IR_SALV_FULLSCREEN_ADAPTER        =
+* IMPORTING
+*   E_EXIT_CAUSED_BY_CALLER           =
+*   ES_EXIT_CAUSED_BY_USER            =
+  tables
+    t_outtab                          = P_IT[]
+ EXCEPTIONS
+   PROGRAM_ERROR                     = 1
+   OTHERS                            = 2
+          .
+if sy-subrc <> 0.
+* Implement suitable error handling here
+endif.
+
+
+
+
+
+endform.                    " DISPLAY

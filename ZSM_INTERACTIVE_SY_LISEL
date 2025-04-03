@@ -1,0 +1,225 @@
+*&---------------------------------------------------------------------*
+*& Report ZSM_INTERACTIVE_SY_LISEL
+*&---------------------------------------------------------------------*
+*&
+*&---------------------------------------------------------------------*
+REPORT ZSM_INTERACTIVE_SY_LISEL .
+
+
+
+TYPES : BEGIN OF TY_VBAK,
+        VBELN TYPE VBAK-VBELN,
+        ERNAM TYPE VBAK-ERNAM,
+        VKORG TYPE VBAK-VKORG,
+        KUNNR TYPE VBAK-KUNNR,
+        END OF TY_VBAK.
+
+
+
+TYPES : BEGIN OF TY_VBAP,
+        VBELN TYPE VBAP-VBELN,
+        POSNR TYPE VBAP-POSNR,
+        MATNR TYPE VBAP-MATNR,
+        ARKTX TYPE VBAP-ARKTX,
+        NETWR TYPE VBAP-NETWR,
+        END OF TY_VBAP.
+
+
+DATA : WA_VBAK TYPE TY_VBAK,
+       IT_VBAK TYPE TABLE OF TY_VBAK.
+
+DATA : WA_VBAP TYPE TY_VBAP,
+       IT_VBAP TYPE TABLE OF TY_VBAP.
+
+SELECT-OPTIONS : S_VBELN FOR WA_VBAK-VBELN.
+
+START-OF-SELECTION.
+
+
+PERFORM FETCH_DATA TABLES S_VBELN IT_VBAK.
+
+
+AT LINE-SELECTION.
+
+IF SY-LSIND = 1.
+
+PERFORM FETCH_ITEM_DATA.
+
+
+PERFORM DISPLAY_ITEM_DATA.
+ENDIF.
+
+IF SY-LSIND = 2.
+
+PERFORM GOTO_TRANSACTION_MM03.
+
+ENDIF.
+
+END-OF-SELECTION.
+
+PERFORM DISPLAY TABLES IT_VBAK.
+
+
+
+
+
+TOP-OF-PAGE.
+
+PERFORM TOP_OF_PAGE.
+
+TOP-OF-PAGE DURING LINE-SELECTION.
+
+PERFORM TOP_PAGE_ITEM.
+*&---------------------------------------------------------------------*
+*&      Form  FETCH_DATA
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_S_VBELN  text
+*      -->P_IT_VBAK  text
+*----------------------------------------------------------------------*
+FORM FETCH_DATA  TABLES   P_S_VBELN STRUCTURE  S_VBELN
+                            "Insert correct name for <...>
+                          P_IT_VBAK LIKE IT_VBAK.
+
+  SELECT VBELN
+         ERNAM
+         VKORG
+         KUNNR FROM VBAK INTO TABLE P_IT_VBAK WHERE VBELN IN  P_S_VBELN.
+
+ENDFORM.                    " FETCH_DATA
+*&---------------------------------------------------------------------*
+*&      Form  DISPLAY
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_IT_VBAK  text
+*----------------------------------------------------------------------*
+FORM DISPLAY  TABLES   P_IT_VBAK LIKE IT_VBAK.
+                         "Insert correct name for <...>.
+
+
+  LOOP AT P_IT_VBAK INTO WA_VBAK.
+
+    WRITE : /4 WA_VBAK-VBELN COLOR 5 HOTSPOT,
+             24 WA_VBAK-ERNAM,
+             52 WA_VBAK-VKORG,
+             92 WA_VBAK-KUNNR.
+
+  ENDLOOP.
+
+ENDFORM.                    " DISPLAY
+*&---------------------------------------------------------------------*
+*&      Form  TOP_OF_PAGE
+*&---------------------------------------------------------------------*
+*       text
+
+
+
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM TOP_OF_PAGE .
+
+
+  WRITE : / SY-ULINE,
+          / SY-VLINE , 45 ' SALES ORDER HEADER DATA' COLOR 4, 120
+SY-VLINE,
+ / SY-ULINE.
+
+  WRITE : / SY-VLINE , 2  'SALES ORDER NUMBER ' , 22 ' CREATED BY ' ,
+          50 'SALES ORGANISATION' , 90 ' SOLD-TO-PARTY ' , 120 SY-VLINE,
+          / SY-ULINE.
+
+ENDFORM.                    " TOP_OF_PAGE
+*&---------------------------------------------------------------------*
+*&      Form  FETCH_ITEM_DATA
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM FETCH_ITEM_DATA .
+
+DATA : FVAL TYPE VBAK-VBELN.
+
+DATA : N_VBELN(10) TYPE N.
+
+FVAL = SY-LISEL+3(10).
+
+N_VBELN = FVAL.
+
+SELECT VBELN
+       POSNR
+       MATNR
+       ARKTX
+       NETWR FROM VBAP INTO TABLE IT_VBAP WHERE VBELN = N_VBELN.
+
+ENDFORM.                    " FETCH_ITEM_DATA
+*&---------------------------------------------------------------------*
+*&      Form  DISPLAY_ITEM_DATA
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM DISPLAY_ITEM_DATA .
+
+  LOOP AT IT_VBAP INTO WA_VBAP.
+
+    WRITE : /5 WA_VBAP-VBELN ,
+            22  WA_VBAP-POSNR ,
+            42  WA_VBAP-MATNR COLOR 6 HOTSPOT,
+            55  WA_VBAP-ARKTX,
+            90  WA_VBAP-NETWR LEFT-JUSTIFIED.
+
+
+  ENDLOOP.
+
+ENDFORM.                    " DISPLAY_ITEM_DATA
+*&---------------------------------------------------------------------*
+*&      Form  TOP_PAGE_ITEM
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM TOP_PAGE_ITEM .
+
+  WRITE : / SY-ULINE,
+          / SY-VLINE , 45 ' SALES ORDER ITEM DATA' COLOR 7, 120
+SY-VLINE,
+ / SY-ULINE.
+
+  WRITE : / SY-VLINE , 2  'SALES ORDER NUMBER ' , 22 'ITEM' ,
+           38 ' MATERIAL NO'  , 55 ' DESCRIPTION' , 90 'NET PRICE',
+           120 SY-VLINE,
+          / SY-ULINE.
+
+ENDFORM.                    " TOP_PAGE_ITEM
+*&---------------------------------------------------------------------*
+*&      Form  GOTO_TRANSACTION_MM03
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM GOTO_TRANSACTION_MM03 .
+
+
+  DATA : FVAL(18) TYPE C.
+
+
+ FVAL = SY-LISEL+41(10).
+
+
+  SET PARAMETER ID 'MAT' FIELD  FVAL.
+
+  CALL TRANSACTION 'MM03' AND SKIP FIRST SCREEN.
+
+ENDFORM.                    " GOTO_TRANSACTION_MM03
